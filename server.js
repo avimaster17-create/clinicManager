@@ -35,15 +35,52 @@ app.get('/api/dashboard/today', async (req, res) => {
 });
 
 // ROUTE 2: Get Master Patient List
-app.get('/api/patients', async (req, res) => {
+// app.get('/api/patients', async (req, res) => {
+//   try {
+//     const allPatients = await pool.query(
+//       `SELECT * FROM patients ORDER BY created_at DESC`
+//     );
+//     res.json(allPatients.rows);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Server Error fetching patients' });
+//   }
+// });
+// Example Patient POST Route with Error Logging
+app.post('/api/patients', async (req, res) => {
   try {
-    const allPatients = await pool.query(
-      `SELECT * FROM patients ORDER BY created_at DESC`
+    const { parent_phone, child_name, dob } = req.body;
+    
+    const result = await pool.query(
+      'INSERT INTO patients (parent_phone, child_name, dob, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *',
+      [parent_phone, child_name, dob]
     );
-    res.json(allPatients.rows);
+    
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error fetching patients' });
+    console.error("Database error adding patient:", err.message);
+
+    // Write the error into your new webservice_logs table
+    try {
+      await pool.query(
+        'INSERT INTO webservice_logs (endpoint, error_message, request_body) VALUES ($1, $2, $3)',
+        ['POST /api/patients', err.message, JSON.stringify(req.body)]
+      );
+    } catch (logErr) {
+      console.error("Failed to write log:", logErr.message);
+    }
+
+    res.status(500).json({ error: "Failed to add patient", details: err.message });
+  }
+});
+
+// Endpoint to view the logs in your browser or app
+app.get('/api/logs', async (req, res) => {
+  try {
+    const logs = await pool.query('SELECT * FROM webservice_logs ORDER BY created_at DESC LIMIT 20');
+    res.json(logs.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Could not fetch logs" });
   }
 });
 
