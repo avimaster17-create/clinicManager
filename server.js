@@ -47,16 +47,43 @@ app.get('/api/patients', async (req, res) => {
 });
 
 // ROUTE 3: Quick-Add New Patient
-app.post('/api/patients', async (req, res) => {
-  const { parent_phone, child_name, dob, gender } = req.body;
+// app.post('/api/patients', async (req, res) => {
+//   const { parent_phone, child_name, dob, gender } = req.body;
   
+//   try {
+//     const newPatient = await pool.query(
+//       `INSERT INTO patients (parent_phone, child_name, dob, gender) 
+//        VALUES ($1, $2, $3, $4) 
+//        RETURNING *`,
+//       [parent_phone, child_name, dob, gender]
+//     );
+//     res.status(201).json(newPatient.rows[0]);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Failed to add patient' });
+//   }
+// });
+app.post('/api/patients', async (req, res) => {
+  const { child_name, parent_phone, dob, gender, created_at } = req.body;
   try {
-    const newPatient = await pool.query(
-      `INSERT INTO patients (parent_phone, child_name, dob, gender) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING *`,
-      [parent_phone, child_name, dob, gender]
-    );
+    let newPatient;
+    if (created_at) {
+      // If a historical entry date was provided
+      newPatient = await pool.query(
+        `INSERT INTO patients (child_name, parent_phone, dob, gender, created_at) 
+         VALUES ($1, $2, $3, $4, $5) 
+         RETURNING *`,
+        [child_name, parent_phone, dob, gender, created_at]
+      );
+    } else {
+      // Default to current timestamp if left blank
+      newPatient = await pool.query(
+        `INSERT INTO patients (child_name, parent_phone, dob, gender) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING *`,
+        [child_name, parent_phone, dob, gender]
+      );
+    }
     res.status(201).json(newPatient.rows[0]);
   } catch (err) {
     console.error(err);
@@ -80,6 +107,27 @@ app.post('/api/visits', async (req, res) => {
     res.status(500).json({ error: 'Failed to log visit' });
   }
 });
-// Using 5001 to avoid the Mac Port 5000 background conflict
+app.get('/api/patients/:id/history', async (req, res) => {
+  try {
+    const patientQuery = await pool.query('SELECT * FROM patients WHERE id = $1', [req.params.id]);
+    if (patientQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    
+    const visitsQuery = await pool.query(
+      'SELECT * FROM visits WHERE patient_id = $1 ORDER BY created_at DESC',
+      [req.params.id]
+    );
+
+    res.json({
+      patient: patientQuery.rows[0],
+      visits: visitsQuery.rows.length > 0 ? visitsQuery.rows : []
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch patient history' });
+  }
+});
+// Using 5001 to avoid the Mac Port 5001 background conflict
 const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
