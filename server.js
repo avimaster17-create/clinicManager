@@ -63,12 +63,40 @@ app.get('/api/patients', async (req, res) => {
 //     res.status(500).json({ error: 'Failed to add patient' });
 //   }
 // });
+// app.post('/api/patients', async (req, res) => {
+//   const { child_name, parent_phone, dob, gender, created_at } = req.body;
+//   try {
+//     let newPatient;
+//     if (created_at) {
+//       // If a historical entry date was provided
+//       newPatient = await pool.query(
+//         `INSERT INTO patients (child_name, parent_phone, dob, gender, created_at) 
+//          VALUES ($1, $2, $3, $4, $5) 
+//          RETURNING *`,
+//         [child_name, parent_phone, dob, gender, created_at]
+//       );
+//     } else {
+//       // Default to current timestamp if left blank
+//       newPatient = await pool.query(
+//         `INSERT INTO patients (child_name, parent_phone, dob, gender) 
+//          VALUES ($1, $2, $3, $4) 
+//          RETURNING *`,
+//         [child_name, parent_phone, dob, gender]
+//       );
+//     }
+//     res.status(201).json(newPatient.rows[0]);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Failed to add patient' });
+//   }
+// });
+// ROUTE 3: Add Patient (Captures exact system timestamp for today, or custom historical date if provided)
 app.post('/api/patients', async (req, res) => {
   const { child_name, parent_phone, dob, gender, created_at } = req.body;
   try {
     let newPatient;
-    if (created_at) {
-      // If a historical entry date was provided
+    if (created_at && created_at.trim() !== '') {
+      // If a past historical date was explicitly picked
       newPatient = await pool.query(
         `INSERT INTO patients (child_name, parent_phone, dob, gender, created_at) 
          VALUES ($1, $2, $3, $4, $5) 
@@ -76,10 +104,10 @@ app.post('/api/patients', async (req, res) => {
         [child_name, parent_phone, dob, gender, created_at]
       );
     } else {
-      // Default to current timestamp if left blank
+      // Otherwise, record the exact current system date and time (Sysdate / NOW)
       newPatient = await pool.query(
-        `INSERT INTO patients (child_name, parent_phone, dob, gender) 
-         VALUES ($1, $2, $3, $4) 
+        `INSERT INTO patients (child_name, parent_phone, dob, gender, created_at) 
+         VALUES ($1, $2, $3, $4, NOW()) 
          RETURNING *`,
         [child_name, parent_phone, dob, gender]
       );
