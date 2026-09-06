@@ -6,7 +6,8 @@ const { Pool } = require('pg');
 const app = express();
 
 // Explicitly trust requests from your Vite frontend
-app.use(cors({ origin: 'http://localhost:5173' }));
+// app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors());
 app.use(express.json());
 
 // Connect to Neon PostgreSQL using the URL in your .env file
