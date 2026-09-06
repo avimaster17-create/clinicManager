@@ -52,8 +52,8 @@ app.post('/api/patients', async (req, res) => {
     const { parent_phone, child_name, dob } = req.body;
     
     const result = await pool.query(
-      'INSERT INTO patients (parent_phone, child_name, dob, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *',
-      [parent_phone, child_name, dob]
+      'INSERT INTO patients (parent_phone, child_name, dob, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING *',
+  [parent_phone, child_name, dob]
     );
     
     res.json(result.rows[0]);
